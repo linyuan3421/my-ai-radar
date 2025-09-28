@@ -1,0 +1,104 @@
+# ----------------------------------------------------------------------------
+# Site Information
+# ----------------------------------------------------------------------------
+site_name: AI Frontier Pulse
+site_url: https://linyuan3421.github.io/my-ai-radar/
+site_author: Aren
+site_description: '由AI驱动，每日自动更新全球AI领域的最新融资、产品和技术动态。'
+
+# ----------------------------------------------------------------------------
+# Theme & Appearance Configuration (The Design System)
+# ----------------------------------------------------------------------------
+theme:
+  name: material
+  # 自定义Logo和图标
+  logo: assets/logo.svg
+  favicon: assets/favicon.png
+  # 字体配置
+  font:
+    text: Roboto
+    code: Fira Code
+  # 配色方案 (核心)
+  palette:
+    # 明亮模式
+    - scheme: default
+      primary: blue
+      accent: light-blue
+      toggle:
+        icon: material/weather-sunny
+        name: Switch to dark mode
+    # 黑暗模式
+    - scheme: slate
+      primary: cyan
+      accent: lime
+      toggle:
+        icon: material/weather-night
+        name: Switch to light mode
+
+  # 网站特性与交互 (UX Features)
+  features:
+    - navigation.instant # 页面预加载，速度极快
+    - navigation.tracking # URL自动同步侧边栏高亮
+    - navigation.tabs # 顶部导航标签
+    - navigation.top # 返回顶部按钮
+    - header.autohide # 向下滚动时自动隐藏顶部栏
+    - content.code.annotate # 代码块注释功能
+    - content.code.copy # 代码块一键复制按钮
+    - content.tabs.link # 可链接到特定标签页
+    - search.highlight # 搜索结果高亮
+    - search.suggest # 搜索建议
+
+# ----------------------------------------------------------------------------
+# Navigation & Information Architecture
+# ----------------------------------------------------------------------------
+nav:
+  - 'Home': 'index.md'
+  - 'AI Radar':
+    - 'radar/index.md'
+  - 'Categories':
+    - 'categories.md'
+  - 'About': 'about.md'
+
+# ----------------------------------------------------------------------------
+# Plugins (Powering Advanced Features)
+# ----------------------------------------------------------------------------
+plugins:
+  - search
+  # 博客/信息流插件，用于驱动 "AI Radar"
+  - blog:
+      blog_dir: radar # 指定信息流文章所在的目录
+  # 标签插件，用于自动生成分类和标签
+  - tags
+
+# ----------------------------------------------------------------------------
+# Markdown Extensions (Enhancing Content Display)
+# ----------------------------------------------------------------------------
+markdown_extensions:
+  # 基础
+  - toc:
+      permalink: true
+  # 美化与交互
+  - admonition # 美化提示框 (e.g., !!! note)
+  - pymdownx.details # 可折叠内容块
+  - pymdownx.superfences # 增强代码块
+  - pymdownx.tabbed: # 选项卡内容
+      alternate_style: true
+  # 视觉元素
+  - attr_list # 给Markdown元素添加CSS类或ID
+  - md_in_html
+  - pymdownx.emoji:
+      emoji_index: !!python/name:material.extensions.emoji.twemoji
+      emoji_generator: !!python/name:material.extensions.emoji.to_svg
+
+# ----------------------------------------------------------------------------
+# Customization
+# ----------------------------------------------------------------------------
+extra:
+  social:
+    - icon: fontawesome/brands/github
+      link: https://github.com/example-user # 占位符链接
+
+# ----------------------------------------------------------------------------
+# Copyright
+# ----------------------------------------------------------------------------
+copyright: Copyright &copy; 2025 Aren - All rights reserved.
