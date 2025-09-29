@@ -1,0 +1,38 @@
+# 工作流名称
+name: Deploy MkDocs Site
+
+# 触发条件
+on:
+  # 当有任何代码被推送到 main 分支时，自动触发
+  push:
+    branches:
+      - main
+
+# 任务定义
+jobs:
+  deploy:
+    # 运行环境
+    runs-on: ubuntu-latest
+
+    # 步骤
+    steps:
+      # 第1步：检出代码
+      # 把最新的代码（包括刚刚由AI脚本生成的新日报）下载下来
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # 第2步：设置Python环境
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.10'
+
+      # 第3步：安装 MkDocs 和主题
+      # 只需要安装运行网站所必需的依赖
+      - name: Install dependencies
+        run: pip install mkdocs-material
+
+      # 第4步：部署到GitHub Pages
+      # 运行 mkdocs gh-deploy 命令，它会自动构建HTML文件并推送到一个特殊的gh-pages分支
+      - name: Deploy to GitHub Pages
+        run: mkdocs gh-deploy --force

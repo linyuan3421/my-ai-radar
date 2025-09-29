@@ -1,0 +1,56 @@
+# 工作流名称
+name: Generate Daily AI Report
+
+# 触发条件
+on:
+  # 1. 允许在GitHub页面上手动触发 (用于测试)
+  workflow_dispatch:
+
+  # 2. 定时触发：使用CRON表达式
+  schedule:
+    # 每天UTC时间凌晨0点运行，对于北京时间(UTC+8)就是早上8点
+    - cron: '0 0 * * *'
+
+# 任务定义
+jobs:
+  build:
+    # 运行环境：使用最新的Ubuntu系统
+    runs-on: ubuntu-latest
+
+    # 步骤
+    steps:
+      # 第1步：检出代码
+      # 把你的仓库代码下载到运行环境中
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # 第2步：设置Python环境
+      # 安装指定版本的Python
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.12.4' # 你可以根据需要修改版本
+
+      # 第3步：安装项目依赖
+      # 运行 pip install -r requirements.txt
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      # 第4步：运行AI脚本
+      # 这是核心步骤！执行 run.py 来生成新的日报和首页
+      - name: Run AI script to generate report
+        env:
+          # 关键！从仓库的Secrets中安全地读取API Key，并注入到运行环境中
+          DASHSCOPE_API_KEY: ${{ secrets.DASHSCOPE_API_KEY }}
+        run: python scripts/run.py
+
+      # 第5步：自动提交和推送更改
+      # 将 run.py 生成的新文件（日报和首页）提交回你的GitHub仓库
+      - name: Commit and push changes
+        uses: stefanzweifel/git-auto-commit-action@v5
+        with:
+          commit_message: "docs: ✨ Generate daily report and update index page"
+          # 只提交 docs 目录下的文件变动
+          file_pattern: 'docs/*.md docs/radar/*.md'
