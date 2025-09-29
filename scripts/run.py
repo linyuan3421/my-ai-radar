@@ -153,6 +153,38 @@ def analyze_article_with_ai(article: Dict[str, str]) -> Optional[Dict[str, any]]
     except Exception as e:
         logging.error(f"Qwen-AI分析过程中发生异常: '{article['title']}'. 错误: {e}")
         return None
+    
+def select_highlight_article(analyzed_articles: List[Dict[str, any]]) -> Optional[Dict[str, any]]:
+    """
+    从已分析的文章列表中，根据洞察(insight)的质量选出“今日焦点”。
+    :param analyzed_articles: 包含AI分析结果的文章列表
+    :return: 最佳文章的字典，如果没有合适的则返回None
+    """
+    logging.info("--- 开始筛选“今日焦点”文章 ---")
+    
+    if not analyzed_articles:
+        logging.warning("文章列表为空，无法筛选焦点。")
+        return None
+
+    best_article = None
+    max_score = -1
+
+    for article in analyzed_articles:
+        insight = article.get("insight", "")
+        # 我们的评分标准：洞察(insight)的长度。越长代表AI认为信息量越大。
+        # 这是一个简单但有效的启发式规则。
+        score = len(insight) if insight and insight != "N/A" else 0
+        
+        if score > max_score:
+            max_score = score
+            best_article = article
+    
+    if best_article:
+        logging.info(f"已选定焦点文章: '{best_article.get('original_title')}' (得分: {max_score})")
+    else:
+        logging.warning("未能选出任何焦点文章。")
+        
+    return best_article
 
 def create_daily_report_markdown(analyzed_articles: List[Dict[str, any]]):
     """
@@ -205,45 +237,92 @@ def create_daily_report_markdown(analyzed_articles: List[Dict[str, any]]):
     except IOError as e:
         logging.error(f"写入文件失败: {e}")
 
+def update_index_page(highlight_article: Optional[Dict[str, any]]):
+    """
+    使用焦点文章内容，通过模板生成最终的 docs/index.md 文件。
+    """
+    logging.info("--- 开始更新首页 (index.md) ---")
+    
+    template_path = os.path.join("templates", "index.md.template")
+    output_path = os.path.join("docs", "index.md")
+
+    try:
+        with open(template_path, 'r', encoding='utf-8') as f:
+            template_content = f.read()
+
+        if highlight_article:
+            # 准备要替换的内容
+            tags_list = highlight_article.get('tags', [])
+            tags_str = ", ".join([f"`{tag}`" for tag in tags_list])
+
+            # 执行替换
+            content = template_content.replace("{{HIGHLIGHT_TITLE}}", highlight_article.get('original_title', 'N/A'))
+            content = content.replace("{{HIGHLIGHT_SUMMARY}}", highlight_article.get('summary', 'N/A'))
+            content = content.replace("{{HIGHLIGHT_INSIGHT}}", highlight_article.get('insight', 'N/A'))
+            content = content.replace("{{HIGHLIGHT_CATEGORY}}", highlight_article.get('category', 'N/A'))
+            content = content.replace("{{HIGHLIGHT_TAGS}}", tags_str)
+            content = content.replace("{{HIGHLIGHT_LINK}}", highlight_article.get('link', '#'))
+        else:
+            # 如果没有选出焦点文章，提供一个默认的优雅降级方案
+            logging.warning("未提供焦点文章，首页将使用默认内容。")
+            content = template_content.replace("{{HIGHLIGHT_TITLE}}", "今日暂无特别焦点")
+            content = content.replace("{{HIGHLIGHT_SUMMARY}}", "AI引擎正在持续监控全球动态，请期待明日更新。")
+            content = content.replace("{{HIGHLIGHT_INSIGHT}}", "")
+            content = content.replace("{{HIGHLIGHT_CATEGORY}}", "常规")
+            content = content.replace("{{HIGHLIGHT_TAGS}}", "")
+            content = content.replace("{{HIGHLIGHT_LINK}}", "#")
+
+        with open(output_path, 'w', encoding='utf-8') as f:
+            f.write(content)
+        
+        logging.info(f"首页已成功更新: {output_path}")
+
+    except FileNotFoundError:
+        logging.error(f"致命错误: 首页模板文件未找到于 {template_path}")
+    except Exception as e:
+        logging.error(f"更新首页时发生未知异常: {e}")
+
 # --- 3. 主流程控制 ---
 
 def main():
     """
-    主执行函数，协调整个情报聚合与分析流程。
+    主执行函数，协调整个情报聚合、分析和页面生成流程。
     """
     logging.info("==========================================================")
     logging.info("===== 开始执行RSS聚合AI雷达任务 (由Qwen驱动) =====")
     logging.info("==========================================================")
     
-    # Step 1: 从所有RSS源稳定、高效地聚合文章
+    # Step 1: 聚合文章
     all_raw_articles = scrape_all_rss_feeds()
-    
     if not all_raw_articles:
         logging.warning("所有信源均未能聚合到任何文章，任务结束。")
         return
-
     logging.info(f"成功从所有源聚合了 {len(all_raw_articles)} 篇文章。")
 
-    # Step 2: 随机打乱并截取部分文章进行分析，以控制成本和时间
+    # Step 2: 随机筛选并进行AI分析
     random.shuffle(all_raw_articles)
     articles_to_analyze = all_raw_articles[:TOTAL_ARTICLES_TO_ANALYZE]
     logging.info(f"将从聚合结果中随机选取 {len(articles_to_analyze)} 篇进行AI分析。")
-
-    # Step 3: 对筛选后的文章进行AI分析
     analyzed_articles = []
     for article in articles_to_analyze:
         analysis_data = analyze_article_with_ai(article)
         if analysis_data and analysis_data.get("summary") != "N/A":
-            # 将原始信息和分析结果合并
             combined_data = {**article, **analysis_data, "original_title": article["title"]}
             analyzed_articles.append(combined_data)
 
-    # Step 4: 生成最终的Markdown报告
+    # Step 3 : 选出今日焦点
+    highlight_article = select_highlight_article(analyzed_articles)
+
+    # Step 4 : 更新首页
+    update_index_page(highlight_article)
+
+    # Step 5: 生成每日简报
     create_daily_report_markdown(analyzed_articles)
     
     logging.info("==========================================================")
     logging.info("===== 每日AI雷达任务执行完毕 =====")
     logging.info("==========================================================")
+
 
 if __name__ == "__main__":
     main()
